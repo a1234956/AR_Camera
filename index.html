@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebAR Face Stylization</title>
 
+  <!-- ✅ 引入 TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+
   <!-- ✅ MindAR for image tracking -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
 
@@ -71,61 +74,3 @@
 
               await styleTransfer.transfer(faceCanvas, (err, result) => {
                 if (err || !result) {
-                  console.error("❌ Style transfer failed:", err);
-                  ctx.drawImage(video, x, y, width, height, x, y, width, height);
-                } else {
-                  const styledImg = new Image();
-                  styledImg.onload = () => {
-                    ctx.drawImage(styledImg, x, y, width, height);
-                  };
-                  styledImg.src = result.src;
-                }
-              });
-            }
-          }
-        }
-        requestAnimationFrame(renderFrame);
-      }
-
-      // Set up MindAR
-      async function setupMindAR() {
-        const mindarThree = new window.MINDAR.IMAGE.MindARThree({
-          container: document.body,
-          imageTargetSrc: './a.mind',
-          uiScanning: false,
-          uiLoading: false
-        });
-
-        const { renderer, scene, camera } = mindarThree;
-        const anchor = mindarThree.addAnchor(0);
-
-        anchor.onTargetFound = () => {
-          faceDetectionActive = true;
-          console.log("🎯 a.jpg detected, enabling face detection and style");
-        };
-
-        anchor.onTargetLost = () => {
-          faceDetectionActive = false;
-          console.log("🔕 a.jpg lost, disabling face detection");
-        };
-
-        await mindarThree.start();
-        renderer.setAnimationLoop(() => {
-          renderer.render(scene, camera);
-        });
-      }
-
-      // Initialize all
-      try {
-        console.log("🔄 Initializing TensorFlow.js...");
-        await loadModels();  // Ensure TensorFlow.js is initialized before other models
-        await initCamera();
-        await setupMindAR();
-        renderFrame();
-      } catch (e) {
-        console.error("❌ Initialization failed:", e);
-      }
-    });
-  </script>
-</body>
-</html>

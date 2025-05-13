@@ -48,6 +48,8 @@
       async function loadModels() {
         await tf.ready();  // Make sure TensorFlow.js is ready
         await tf.setBackend('webgpu'); // Set the backend if necessary
+        console.log("✅ TensorFlow.js initialized and set to 'webgpu' backend");
+
         await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
         styleTransfer = await ml5.styleTransfer('https://storage.googleapis.com/ml5-style-transfer/mosaic', () => {
           console.log("✅ Style model loaded");
@@ -115,8 +117,9 @@
 
       // Initialize all
       try {
+        console.log("🔄 Initializing TensorFlow.js...");
+        await loadModels();  // Ensure TensorFlow.js is initialized before other models
         await initCamera();
-        await loadModels();
         await setupMindAR();
         renderFrame();
       } catch (e) {

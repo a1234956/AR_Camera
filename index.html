@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WebAR Face Stylization</title>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas, video { position: absolute; top: 0; left: 0; }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay muted playsinline width="640" height="480" style="display:none;"></video>
+  <canvas id="output" width="640" height="480"></canvas>
+  <img id="bg" src="b.jpg" style="display: none" />
+  <canvas id="face-canvas" width="150" height="150" style="display:none;"></canvas>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('output');
+    const ctx = canvas.getContext('2d');
+    const bgImg = document.getElementById('bg');
+    const faceCanvas = document.getElementById('face-canvas');
+    const faceCtx = faceCanvas.getContext('2d');
+
+    let faceDetectionActive = false;
+    let styleTransfer;
+
+    async function initCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      video.srcObject = stream;
+      await new Promise(resolve => video.onloadedmetadata = resolve);
+    }
+
+    async function loadModels() {
+      await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
+      styleTransfer = await ml5.styleTransfer('https://storage.googleapis.com/ml5-style-transfer/mosaic', () => {
+        console.log("Style model loaded");
+      });
+    }
+
+    async function renderFrame() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      if (faceDetectionActive) {
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+        if (detections.length > 0) {
+          ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+          for (const det of detections) {
+            const { x, y, width, height } = det.box;
+            faceCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+            faceCtx.drawImage(video, x, y, width, height, 0, 0, faceCanvas.width, faceCanvas.height);
+
+            await styleTransfer.transfer(faceCanvas, (err, result) => {
+              if (err) {
+                console.error(err);
+                ctx.drawImage(video, x, y, width, height, x, y, width, height);
+              } else {
+                const styledImg = new Image();
+                styledImg.onload = () => {
+                  ctx.drawImage(styledImg, x, y, width, height);
+                };
+                styledImg.src = result.src;
+              }
+            });
+          }
+        }
+      }
+      requestAnimationFrame(renderFrame);
+    }
+
+    async function setupMindAR() {
+      const mindarThree = new window.MINDAR.IMAGE.MindARThree({
+        container: document.body,
+        imageTargetSrc: './a.mind',
+        uiScanning: false,
+        uiLoading: false
+      });
+
+      const { renderer, scene, camera } = mindarThree;
+      const anchor = mindarThree.addAnchor(0);
+
+      anchor.onTargetFound = () => {
+        faceDetectionActive = true;
+        console.log("a.jpg detected, enabling face detection and style");
+      };
+
+      anchor.onTargetLost = () => {
+        faceDetectionActive = false;
+        console.log("a.jpg lost, disabling face detection");
+      };
+
+      await mindarThree.start();
+      renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+      });
+    }
+
+    (async () => {
+      await initCamera();
+      await loadModels();
+      await setupMindAR();
+      renderFrame();
+    })();
+  </script>
+</body>
+</html>

@@ -26,7 +26,7 @@
   <canvas id="face-canvas" width="150" height="150" style="display:none;"></canvas>
 
   <script>
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       const video = document.getElementById('video');
       const canvas = document.getElementById('output');
       const ctx = canvas.getContext('2d');
@@ -37,19 +37,24 @@
       let faceDetectionActive = false;
       let styleTransfer;
 
+      // Initialize the camera
       async function initCamera() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
         video.srcObject = stream;
         await new Promise(resolve => video.onloadedmetadata = resolve);
       }
 
+      // Load models
       async function loadModels() {
+        await tf.ready();  // Make sure TensorFlow.js is ready
+        await tf.setBackend('webgpu'); // Set the backend if necessary
         await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
         styleTransfer = await ml5.styleTransfer('https://storage.googleapis.com/ml5-style-transfer/mosaic', () => {
           console.log("✅ Style model loaded");
         });
       }
 
+      // Render frames
       async function renderFrame() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -80,6 +85,7 @@
         requestAnimationFrame(renderFrame);
       }
 
+      // Set up MindAR
       async function setupMindAR() {
         const mindarThree = new window.MINDAR.IMAGE.MindARThree({
           container: document.body,
@@ -107,16 +113,15 @@
         });
       }
 
-      (async () => {
-        try {
-          await initCamera();
-          await loadModels();
-          await setupMindAR();
-          renderFrame();
-        } catch (e) {
-          console.error("❌ Initialization failed:", e);
-        }
-      })();
+      // Initialize all
+      try {
+        await initCamera();
+        await loadModels();
+        await setupMindAR();
+        renderFrame();
+      } catch (e) {
+        console.error("❌ Initialization failed:", e);
+      }
     });
   </script>
 </body>

@@ -4,9 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebAR Face Stylization</title>
+
+  <!-- ✅ MindAR for image tracking -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.1.4/dist/mindar-image-three.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
-  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+
+  <!-- ✅ Face-api.js UMD for browsers -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <!-- ✅ ml5.js style transfer -->
+  <script defer src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+
   <style>
     body { margin: 0; overflow: hidden; }
     canvas, video { position: absolute; top: 0; left: 0; }
@@ -38,7 +45,7 @@
     async function loadModels() {
       await faceapi.nets.tinyFaceDetector.loadFromUri('./models');
       styleTransfer = await ml5.styleTransfer('https://storage.googleapis.com/ml5-style-transfer/mosaic', () => {
-        console.log("Style model loaded");
+        console.log("✅ Style model loaded");
       });
     }
 
@@ -55,8 +62,8 @@
             faceCtx.drawImage(video, x, y, width, height, 0, 0, faceCanvas.width, faceCanvas.height);
 
             await styleTransfer.transfer(faceCanvas, (err, result) => {
-              if (err) {
-                console.error(err);
+              if (err || !result) {
+                console.error("❌ Style transfer failed:", err);
                 ctx.drawImage(video, x, y, width, height, x, y, width, height);
               } else {
                 const styledImg = new Image();
@@ -85,12 +92,12 @@
 
       anchor.onTargetFound = () => {
         faceDetectionActive = true;
-        console.log("a.jpg detected, enabling face detection and style");
+        console.log("🎯 a.jpg detected, enabling face detection and style");
       };
 
       anchor.onTargetLost = () => {
         faceDetectionActive = false;
-        console.log("a.jpg lost, disabling face detection");
+        console.log("🔕 a.jpg lost, disabling face detection");
       };
 
       await mindarThree.start();
@@ -100,10 +107,14 @@
     }
 
     (async () => {
-      await initCamera();
-      await loadModels();
-      await setupMindAR();
-      renderFrame();
+      try {
+        await initCamera();
+        await loadModels();
+        await setupMindAR();
+        renderFrame();
+      } catch (e) {
+        console.error("❌ Initialization failed:", e);
+      }
     })();
   </script>
 </body>
